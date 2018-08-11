@@ -305,7 +305,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Whiskey.  If not, see <http://www.gnu.org/licenses/>.
 
-„Even ghosts stray from the path of righteousness.“
+다겠않 지하름시 서해대 에움로괴 의몸
+를기이리누 는없 가해 럼그
+행서
 
 Contact me with bugs, errors, questions, or comments at kllwynog@gmail.com.
     """)
