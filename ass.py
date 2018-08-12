@@ -21,7 +21,7 @@ class Whiskey(QMainWindow):
     super().__init__()
     self.setGeometry((screen.width() - WIDTH) / 2, (screen.height() - HEIGHT) / 2, WIDTH, HEIGHT)
     self.statusBar().showMessage("%s is wonderful." % ["Everything", "Something", "Anything", "Nothing"][random.randint(0, 3)])
-    self.setWindowTitle("Whiskey")
+    self.setWindowTitle("Whiskey Lagopus")
     self.setStyleSheet(STYLESHEET)
 
     # I am the large container; I contain multitudes.
@@ -131,6 +131,22 @@ class Whiskey(QMainWindow):
 
     #### The IPA chart frame will now be created. ####
 
+    self.consonantChart = QGridLayout()
+    self.consonantChart.setSpacing(0)
+    for consonant in Data.CONTOIDS2D:
+      button = QPushButton(consonant[0], self.featuresFrame)
+      consonant.append(button)
+      button.setProperty("class", "consonant")
+      button.clicked.connect(partial(self.setSegment, button))
+      self.consonantChart.addWidget(button, consonant[2], consonant[1])
+
+    for i in range(10): # Consonant manners.
+      for j in range(11 * 2): # Consonant places and voices.
+        if self.consonantChart.itemAtPosition(i, j) == None:
+          spacerButton = QPushButton("", self.featuresFrame)
+          spacerButton.setProperty("class", "spacer")
+          self.consonantChart.addWidget(spacerButton, i, j)
+
     self.vowelChart = QGridLayout()
     self.vowelChart.setSpacing(0)
     for vowel in Data.VOCOIDS2D:
@@ -141,18 +157,26 @@ class Whiskey(QMainWindow):
       self.vowelChart.addWidget(button, vowel[1], vowel[2])
 
     for i in range(7): # Vowel heights.
-      for j in range(10): # Vowel frontnesses and ringednesses.
+      for j in range(5 * 2): # Vowel frontnesses and ringednesses.
         if self.vowelChart.itemAtPosition(i, j) == None:
           spacerButton = QPushButton("", self.featuresFrame)
           spacerButton.setProperty("class", "spacer")
           self.vowelChart.addWidget(spacerButton, i, j)
 
+    self.consonantChartHBox = QHBoxLayout()
+    self.consonantChartHBox.addStretch(1)
+    self.consonantChartHBox.addLayout(self.consonantChart)
+
     self.vowelChartHBox = QHBoxLayout()
     self.vowelChartHBox.addStretch(1)
     self.vowelChartHBox.addLayout(self.vowelChart)
+
     self.vcChartVBox = QVBoxLayout()
     self.vcChartVBox.addStretch(1)
+    self.vcChartVBox.addLayout(self.consonantChartHBox)
+    self.vcChartVBox.addStretch(1)
     self.vcChartVBox.addLayout(self.vowelChartHBox)
+    self.vcChartVBox.addStretch(1)
     self.chartFrame.setLayout(self.vcChartVBox)
 
     self.chartFrameGrid = QGridLayout()
@@ -167,17 +191,44 @@ class Whiskey(QMainWindow):
 
     self.menu = self.menuBar()
     self.fileMenu = self.menu.addMenu("&File")
-    self.newFeatureSetAction = self.fileMenu.addAction("New &Feature set")
-    self.newFeatureSetAction = self.fileMenu.addAction("New &Segment inventory")
+    self.newFeatureSetAction = self.fileMenu.addAction("New feature set")
+    self.newSegmentInventoryAction = self.fileMenu.addAction("New segment inventory")
+    self.fileMenu.addSeparator()
+    self.openFeatureSetAction = self.fileMenu.addAction("Open feature set")
+    self.openSegmentInventoryAction = self.fileMenu.addAction("Open segment inventory")
+    self.fileMenu.addSeparator()
+    self.saveFeatureSetAction = self.fileMenu.addAction("Save current feature set")
+    self.saveSegmentInventoryAction = self.fileMenu.addAction("Save current segment inventory")
+    self.fileMenu.addSeparator()
+    self.saveAsFeatureSetAction = self.fileMenu.addAction("Save current feature set as")
+    self.saveAsSegmentInventoryAction = self.fileMenu.addAction("Save current segment inventory as")
+    self.fileMenu.addSeparator()
+    self.quitAction = self.fileMenu.addAction("Quit")
+    self.quitAction.triggered.connect(self.quit)
+    self.dontQuitAction = self.fileMenu.addAction("Don't quit")
+    self.dontQuitAction.triggered.connect(self.dontQuit)
 
     self.editMenu = self.menu.addMenu("&Edit")
+    self.addFeatureAction = self.editMenu.addAction("Add a feature")
+    self.addSegmentAction = self.editMenu.addAction("Add a segment")
+    self.editMenu.addSeparator()
+    self.editFeatureSetAction = self.editMenu.addAction("Edit a feature")
+    self.editFeatureSetAction = self.editMenu.addAction("Edit a segment")
+    self.editMenu.addSeparator()
+    self.editFeatureSetAction = self.editMenu.addAction("Edit current feature set")
+    self.editSegmentInventoryAction = self.editMenu.addAction("Edit current segment inventory")
 
     self.viewMenu = self.menu.addMenu("&View")
+    self.showLanguageAction = self.viewMenu.addAction("Only show active language")
+    self.showPulmonicAction = self.viewMenu.addAction("Show all pulmonic sounds")
+    self.showAllAction = self.viewMenu.addAction("Show all sounds")
+    self.viewMenu.addSeparator()
+    self.themeAction = self.viewMenu.addAction("Change theme")
+    self.changeLanguageAction = self.viewMenu.addAction("Change display language")
 
     self.helpMenu = self.menu.addMenu("&Help")
     self.aboutAction = self.helpMenu.addAction("&About")
     self.aboutAction.triggered.connect(self.aboutWindow)
-    self.languageAction = self.helpMenu.addAction("Change display &Language")
 
     #### The menu bar has now been created. ####
   
@@ -205,23 +256,41 @@ class Whiskey(QMainWindow):
     for vowel in Data.VOCOIDS2D:
       self.lightenButton(vowel[-1])
 
+    for consonant in Data.CONTOIDS2D:
+      self.lightenButton(consonant[-1])
+
     for i in range(len(Data.VOCOIDS2D)):
       for j in range(len(Data.FEATURES)):
         vowel = Data.VOCOIDS2D[i]
         feature = Data.FEATURES[j]
-        if feature[2] != 1 and feature[2] != vowel[j + 3]:
+        if feature[2] != 1:
+          if vowel[j + 3] == 1:
+            self.greyenButton(vowel[-1])
+          if feature[2] != vowel[j + 3]:
             self.darkenButton(vowel[-1])
+
+    for i in range(len(Data.CONTOIDS2D)):
+      for j in range(len(Data.FEATURES)):
+        consonant = Data.CONTOIDS2D[i]
+        feature = Data.FEATURES[j]
+        if feature[2] != 1:
+          if consonant[j + 3] == 1:
+            self.greyenButton(consonant[-1])
+          if feature[2] != consonant[j + 3]:
+            self.darkenButton(consonant[-1])
 
   def setSegment(self, button):
     segment = []
     symbol = button.text()
-    for w in Data.VOCOIDS:
-      for v in w:
-        if v[0] == symbol:
-          segment = v
-          break
+    for s in Data.CONTOIDS2D + Data.VOCOIDS2D:
+      if s[0] == symbol:
+        segment = s
+        break
     self.segmentSymbol.setText(symbol)
-    self.segmentName.setText("I'm the " + Data.VOWELSTATS[0][segment[1]] + Data.VOWELSTATS[1][segment[2]] + Data.VOWELSTATS[2][segment[15]] + "vowel!")
+    if s in Data.CONTOIDS2D:
+      self.segmentName.setText("I'm the " + Data.CONSONANTSTATS[0][segment[7]] + Data.CONSONANTSTATS[1][int(segment[1] / 2)] + Data.CONSONANTSTATS[2][segment[2]] + "!")
+    else:
+      self.segmentName.setText("I'm the " + Data.VOWELSTATS[0][segment[1]] + Data.VOWELSTATS[1][segment[2]] + Data.VOWELSTATS[2][segment[15]] + "vowel!")
     self.setFeaturesOfSegment(segment)
     for feature in Data.FEATURES:
       b = feature[4].button(feature[2])
@@ -230,7 +299,10 @@ class Whiskey(QMainWindow):
 #   self.updateSegments() # Not necessary because updateFeatures() calls updateSegments().
   
   def darkenButton(self, button):
-    button.setStyleSheet("background: #dcdad5; color: #a0a0a0;")
+    button.setStyleSheet("background: #dcdad5; color: #b0b0b0;")
+
+  def greyenButton(self, button):
+    button.setStyleSheet("color: #b0b0b0;")
 
   def lightenButton(self, button):
     button.setStyleSheet("background: #f7f7f4; color: black;")
@@ -284,9 +356,57 @@ class Whiskey(QMainWindow):
     widget.setProperty("class", widget.property("class").replace("  ", " "))
     return widget
   
+  def quit(self):
+    quit = QDialog(self)
+    quit.resize(320, 160)
+    quit.setWindowTitle("Whiskey: Quit")
+
+    quitLabel = QLabel("Are you sure?", quit)
+    quitLabelBox = QHBoxLayout()
+    quitLabelBox.addStretch(1)
+    quitLabelBox.addWidget(quitLabel)
+    quitLabelBox.addStretch(1)
+
+    quitYes = QPushButton(quit)
+    quitYes.setText("Yes")
+    quitYes.clicked.connect(partial(self.quitForReal, quit))
+
+    quitNo = QPushButton(quit)
+    quitNo.setText("No")
+    quitNo.clicked.connect(partial(self.quitForFake, quit))
+
+    quitHBox = QHBoxLayout()
+    quitHBox.addStretch(1)
+    quitHBox.addWidget(quitYes)
+    quitHBox.addWidget(quitNo)
+    quitHBox.addStretch(1)
+
+    quitVBox = QVBoxLayout()
+    quitVBox.addStretch(1)
+    quitVBox.addLayout(quitLabelBox)
+    quitVBox.addStretch(1)
+    quitVBox.addLayout(quitHBox)
+    quitVBox.addStretch(1)
+    quit.setLayout(quitVBox)
+    quit.exec_()
+  
+  def quitForReal(self, window):
+    window.close()
+    self.close()
+  
+  def quitForFake(self, window):
+    window.close()
+  
+  def dontQuit(self):
+    dontQuit = QMessageBox(self)
+    dontQuit.resize(320, 160)
+    dontQuit.setWindowTitle("Whiskey: Don't quit")
+    dontQuit.setText("Okay, I won't quit.")
+    dontQuit.exec_()
+  
   def aboutWindow(self):
     about = QMessageBox(self)
-    about.setWindowTitle("About Whiskey")
+    about.setWindowTitle("Whiskey: About")
     about.setText("""
 © 2018 Klaus Llwynog.
 
@@ -322,6 +442,9 @@ if __name__ == "__main__":
 
   charisID = QFontDatabase.addApplicationFont("media/CharisSIL-R.ttf")
   charis = QFontDatabase.applicationFontFamilies(charisID)
+
+  doulosID = QFontDatabase.addApplicationFont("media/DoulosSIL-R.ttf")
+  doulos = QFontDatabase.applicationFontFamilies(doulosID)
 
   w = Whiskey()
   w.show()

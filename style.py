@@ -8,6 +8,7 @@ QFrame.segmentFrame {
 }
 
 QLabel.segmentSymbol {
+  font-family: serif;
   font-family: CharisSIL;
   font-size: 64pt;
 }
@@ -72,14 +73,15 @@ QPushButton.selectedp {
   background: #d0d0ff;
 }
 
-QPushButton.vowel, QPushButton.spacer {
+QPushButton.consonant, QPushButton.vowel, QPushButton.spacer {
   background: #f7f7f4;
+  font-family: serif;
   font-family: CharisSIL;
-  font-size: 24pt;
-  height: 48px;
-  width: 64px;
+  font-size: 20pt;
+  height: 40px;
+  width: 56px;
   outline: 0;
-  border: 1px solid #808080;
+  border: 1px solid #909090;
   vertical-align: middle;
   text-align: center;
 }
