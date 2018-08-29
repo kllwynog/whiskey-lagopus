@@ -1,5 +1,6 @@
 import data as Data
 import style as Style
+import inventories as Inventories
 from functools import partial
 import sys, itertools, random
 from PyQt5.QtWidgets import *#QApplication, QWidget, QDesktopWidget, QCheckBox, QMainWindow, QAction, QHBoxLayout, QVBoxLayout, QFrame, QGridLayout, QRadioButton, QLabel, QButtonGroup, QPushButton
@@ -15,14 +16,179 @@ POLARITY = [["−", "#ffd0d0", "m"],
             ["±", "#ffffff", "u"],
             ["+", "#d0d0ff", "p"]]
 
+  
+class NewInventory(QMainWindow):
+  def __init__(self, whiskey):
+    super().__init__()
+    self.whiskey = whiskey
+    self.setGeometry((screen.width() - WIDTH) / 3, (screen.height() - HEIGHT) / 3, WIDTH, HEIGHT)
+    self.setWindowTitle("Whiskey: New segment inventory")
+    self.container = QWidget(self)
+    self.setCentralWidget(self.container)
+    self.setStyleSheet(STYLESHEET)
+    self.buttons = [[], []]
+
+    self.consonantChart = QGridLayout()
+    self.consonantChart.setSpacing(0)
+    for consonant in Data.CONTOIDS2D:
+      button = QPushButton(consonant[0], self)
+      self.buttons[0].append(button)
+      button.setProperty("class", "consonant newinv")
+      button.clicked.connect(partial(self.addToInventory, button, "c"))
+      self.consonantChart.addWidget(button, consonant[2], consonant[1])
+
+    for i in range(10): # Consonant manners.
+      for j in range(11 * 2): # Consonant places and voices.
+        if self.consonantChart.itemAtPosition(i, j) == None:
+          spacerButton = QPushButton("", self)
+          spacerButton.setProperty("class", "spacer")
+          self.consonantChart.addWidget(spacerButton, i, j)
+
+    self.vowelChart = QGridLayout()
+    self.vowelChart.setSpacing(0)
+    for vowel in Data.VOCOIDS2D:
+      button = QPushButton(vowel[0], self)
+      self.buttons[1].append(button)
+      button.setProperty("class", "vowel newinv")
+      button.clicked.connect(partial(self.addToInventory, button, "v"))
+      self.vowelChart.addWidget(button, vowel[1], vowel[2])
+
+    for i in range(7): # Vowel heights.
+      for j in range(5 * 2): # Vowel frontnesses and ringednesses.
+        if self.vowelChart.itemAtPosition(i, j) == None:
+          spacerButton = QPushButton("", self)
+          spacerButton.setProperty("class", "spacer")
+          self.vowelChart.addWidget(spacerButton, i, j)
+
+    self.consonantChartHBox = QHBoxLayout()
+    self.consonantChartHBox.addStretch(1)
+    self.consonantChartHBox.addLayout(self.consonantChart)
+
+    self.vowelChartHBox = QHBoxLayout()
+    self.vowelChartHBox.addStretch(1)
+
+    self.buttonGrid = QGridLayout()
+    self.consonantChart.setSpacing(0)
+    saveOnly = QPushButton("Save this inventory", self)
+    saveLoad = QPushButton("Save and load this inventory", self)
+    selectAll = QPushButton("Select all", self)
+    rejectAll = QPushButton("Reject all", self)
+    surprise = QPushButton("Surprise me!", self)
+    saveOnly.setProperty("class", "newInventoryButton")
+    saveLoad.setProperty("class", "newInventoryButton")
+    selectAll.setProperty("class", "newInventoryButton")
+    rejectAll.setProperty("class", "newInventoryButton")
+    surprise.setProperty("class", "newInventoryButton")
+    saveOnly.clicked.connect(self.saveOnly)
+    saveLoad.clicked.connect(self.saveLoad)
+    selectAll.clicked.connect(self.selectAll)
+    rejectAll.clicked.connect(self.rejectAll)
+    surprise.clicked.connect(self.surprise)
+    self.buttonGrid.addWidget(saveOnly, 0, 0, 1, 2)
+    self.buttonGrid.addWidget(saveLoad, 1, 0, 1, 2)
+    self.buttonGrid.addWidget(selectAll, 2, 0)
+    self.buttonGrid.addWidget(rejectAll, 2, 1)
+    self.buttonGrid.addWidget(surprise, 3, 0, 1, 2)
+
+    self.vowelChartHBox.addLayout(self.buttonGrid)
+    self.vowelChartHBox.addStretch(1)
+    self.vowelChartHBox.addLayout(self.vowelChart)
+
+    self.chartBox = QVBoxLayout()
+    self.chartBox.addStretch(1)
+    self.chartBox.addLayout(self.consonantChartHBox)
+    self.chartBox.addStretch(1)
+    self.chartBox.addLayout(self.vowelChartHBox)
+    self.chartBox.addStretch(1)
+
+    self.container.setLayout(self.chartBox)
+
+    self.buttonStates = [[0 for c in Data.CONTOIDS2D], [0 for v in Data.VOCOIDS2D]]
+
+    self.inventory = [[], []]
+  
+  def prepare(self):
+    for i in range(len(self.buttonStates)):
+      for j in range(len(self.buttonStates[i])):
+        state = self.buttonStates[i][j]
+        if state == 0:
+          self.buttons[i][j].setStyleSheet("background: #dcdad5; color: #b0b0b0;")
+        elif state == 1:
+          self.buttons[i][j].setStyleSheet("background: #f7f7f4; color: black;")
+  
+  def saveOnly(self):
+    dialog = QFileDialog
+    filename = dialog.getSaveFileName(self, "", "", "Whiskey files (*.wh);;")[0]
+    if filename[-3:] != ".wh":
+      filename += ".wh"
+
+    Inventories.saveOnly(open(filename, "w"), self.buttons, self.buttonStates)
+
+    return filename
+  
+  def saveLoad(self):
+    self.whiskey.load(self.saveOnly())
+    self.close()
+  
+  def rejectAll(self):
+    self.buttonStates = [[1 for c in Data.CONTOIDS2D], [1 for v in Data.VOCOIDS2D]]
+    for c in self.buttons[0]:
+      self.addToInventory(c, "c")
+    for v in self.buttons[1]:
+      self.addToInventory(v, "v")
+  
+  def selectAll(self):
+    self.buttonStates = [[0 for c in Data.CONTOIDS2D], [0 for v in Data.VOCOIDS2D]]
+    for c in self.buttons[0]:
+      self.addToInventory(c, "c")
+    for v in self.buttons[1]:
+      self.addToInventory(v, "v")
+  
+  def surprise(self):
+    seed = random.randint(2, 10) / 12
+    print(seed)
+    self.buttonStates = [[(1 if random.random() < seed else 0) for c in Data.CONTOIDS2D], [(1 if random.random() < seed else 0) for v in Data.VOCOIDS2D]]
+    for c in self.buttons[0]:
+      self.addToInventory(c, "c")
+    for v in self.buttons[1]:
+      self.addToInventory(v, "v")
+
+  def addToInventory(self, button, parity):
+    segment = button.text()
+    if parity == "c":
+      state = self.buttonStates[0][self.buttons[0].index(button)]
+      if state == 1:
+        if segment in self.inventory[0]: self.inventory[0].remove(button.text())
+        button.setStyleSheet("background: #dcdad5; color: #b0b0b0;")
+        self.buttonStates[0][self.buttons[0].index(button)] = 0
+      elif state == 0:
+        if not segment in self.inventory[0]: self.inventory[0].append(button.text())
+        button.setStyleSheet("background: #f7f7f4; color: black;")
+        self.buttonStates[0][self.buttons[0].index(button)] = 1
+    if parity == "v":
+      state = self.buttonStates[1][self.buttons[1].index(button)]
+      if state == 1:
+        if segment in self.inventory[1]: self.inventory[1].remove(button.text())
+        button.setStyleSheet("background: #dcdad5; color: #b0b0b0;")
+        self.buttonStates[1][self.buttons[1].index(button)] = 0
+      elif state == 0:
+        if not segment in self.inventory[1]: self.inventory[1].append(button.text())
+        button.setStyleSheet("background: #f7f7f4; color: black;")
+        self.buttonStates[1][self.buttons[1].index(button)] = 1
+
+    print(state, self.inventory)
+
 class Whiskey(QMainWindow):
 
   def __init__(self):
     super().__init__()
     self.setGeometry((screen.width() - WIDTH) / 2, (screen.height() - HEIGHT) / 2, WIDTH, HEIGHT)
-    self.statusBar().showMessage("%s is wonderful." % ["Everything", "Something", "Anything", "Nothing"][random.randint(0, 3)])
+    self.statusBar().showMessage("I am Whiskey Lagopus, but you can call me %s." % ["Whiskers", "W-dawg", "Mr. Bun-buns", "the Destructor"][random.randint(0, 3)])
     self.setWindowTitle("Whiskey Lagopus")
     self.setStyleSheet(STYLESHEET)
+
+    self.activeLanguage = Inventories.convert(Inventories.COMMON_TIPA)
+    self.isShowingActiveLanguage = True
 
     # I am the large container; I contain multitudes.
     self.container = QWidget(self)
@@ -131,6 +297,8 @@ class Whiskey(QMainWindow):
 
     #### The IPA chart frame will now be created. ####
 
+    self.buttonStates = [[1 for c in Data.CONTOIDS2D], [1 for v in Data.VOCOIDS2D]]
+
     self.consonantChart = QGridLayout()
     self.consonantChart.setSpacing(0)
     for consonant in Data.CONTOIDS2D:
@@ -192,16 +360,24 @@ class Whiskey(QMainWindow):
     self.menu = self.menuBar()
     self.fileMenu = self.menu.addMenu("&File")
     self.newFeatureSetAction = self.fileMenu.addAction("New feature set")
-    self.newSegmentInventoryAction = self.fileMenu.addAction("New segment inventory")
+    self.newInventoryAction = self.fileMenu.addAction("New segment inventory")
+    self.newInventoryAction.triggered.connect(self.newInventory)
+    self.newInventoryAction.setShortcut("Ctrl+N")
+    self.newInventoryWindow = NewInventory(self)
+
     self.fileMenu.addSeparator()
     self.openFeatureSetAction = self.fileMenu.addAction("Open feature set")
-    self.openSegmentInventoryAction = self.fileMenu.addAction("Open segment inventory")
+    self.openInventoryAction = self.fileMenu.addAction("Open segment inventory")
+    self.openInventoryAction.triggered.connect(self.openInventory)
+    self.openInventoryAction.setShortcut("Ctrl+O")
     self.fileMenu.addSeparator()
     self.saveFeatureSetAction = self.fileMenu.addAction("Save current feature set")
-    self.saveSegmentInventoryAction = self.fileMenu.addAction("Save current segment inventory")
+    self.saveInventoryAction = self.fileMenu.addAction("Save current segment inventory")
+    self.saveInventoryAction.triggered.connect(self.saveInventory)
+    self.saveInventoryAction.setShortcut("Ctrl+S")
     self.fileMenu.addSeparator()
     self.saveAsFeatureSetAction = self.fileMenu.addAction("Save current feature set as")
-    self.saveAsSegmentInventoryAction = self.fileMenu.addAction("Save current segment inventory as")
+    self.saveAsInventoryAction = self.fileMenu.addAction("Save current segment inventory as")
     self.fileMenu.addSeparator()
     self.quitAction = self.fileMenu.addAction("Quit")
     self.quitAction.triggered.connect(self.quit)
@@ -216,10 +392,13 @@ class Whiskey(QMainWindow):
     self.editFeatureSetAction = self.editMenu.addAction("Edit a segment")
     self.editMenu.addSeparator()
     self.editFeatureSetAction = self.editMenu.addAction("Edit current feature set")
-    self.editSegmentInventoryAction = self.editMenu.addAction("Edit current segment inventory")
+    self.editInventoryAction = self.editMenu.addAction("Edit current segment inventory")
 
     self.viewMenu = self.menu.addMenu("&View")
     self.showLanguageAction = self.viewMenu.addAction("Only show active language")
+    self.showLanguageAction.setCheckable(True)
+    self.showLanguageAction.setChecked(True)
+    self.showLanguageAction.triggered.connect(self.toggleShowActiveLanguage)
     self.showPulmonicAction = self.viewMenu.addAction("Show all pulmonic sounds")
     self.showAllAction = self.viewMenu.addAction("Show all sounds")
     self.viewMenu.addSeparator()
@@ -229,8 +408,12 @@ class Whiskey(QMainWindow):
     self.helpMenu = self.menu.addMenu("&Help")
     self.aboutAction = self.helpMenu.addAction("&About")
     self.aboutAction.triggered.connect(self.aboutWindow)
+    self.aboutAction.setShortcut("F12")
 
     #### The menu bar has now been created. ####
+
+    self.updateFeatures() #this makes it not look horrible when you startup, also fix the fonts lmao
+    # that means when you add custom features it'll probably need a self.updateFeatures() here too
   
   def updateFeatures(self):
     for feature in Data.FEATURES:
@@ -260,24 +443,30 @@ class Whiskey(QMainWindow):
       self.lightenButton(consonant[-1])
 
     for i in range(len(Data.VOCOIDS2D)):
-      for j in range(len(Data.FEATURES)):
-        vowel = Data.VOCOIDS2D[i]
-        feature = Data.FEATURES[j]
-        if feature[2] != 1:
-          if vowel[j + 3] == 1:
-            self.greyenButton(vowel[-1])
-          if feature[2] != vowel[j + 3]:
-            self.darkenButton(vowel[-1])
+      vowel = Data.VOCOIDS2D[i]
+      if self.isShowingActiveLanguage and vowel[0] not in self.activeLanguage:
+        self.hideButton(vowel[-1])
+      else:
+        for j in range(len(Data.FEATURES)):
+          feature = Data.FEATURES[j]
+          if feature[2] != 1:
+            if feature[2] == 0 and vowel[j + 3] == 1:
+              self.greyenButton(vowel[-1])
+            if feature[2] != vowel[j + 3]:
+              self.darkenButton(vowel[-1])
 
     for i in range(len(Data.CONTOIDS2D)):
-      for j in range(len(Data.FEATURES)):
-        consonant = Data.CONTOIDS2D[i]
-        feature = Data.FEATURES[j]
-        if feature[2] != 1:
-          if consonant[j + 3] == 1:
-            self.greyenButton(consonant[-1])
-          if feature[2] != consonant[j + 3]:
-            self.darkenButton(consonant[-1])
+      consonant = Data.CONTOIDS2D[i]
+      if self.isShowingActiveLanguage and consonant[0] not in self.activeLanguage:
+        self.hideButton(consonant[-1])
+      else:
+        for j in range(len(Data.FEATURES)):
+          feature = Data.FEATURES[j]
+          if feature[2] != 1:
+            if feature[2] == 0 and consonant[j + 3] == 1:
+              self.greyenButton(consonant[-1])
+            if feature[2] != consonant[j + 3]:
+              self.darkenButton(consonant[-1])
 
   def setSegment(self, button):
     segment = []
@@ -296,16 +485,41 @@ class Whiskey(QMainWindow):
       b = feature[4].button(feature[2])
 
     self.updateFeatures()
-#   self.updateSegments() # Not necessary because updateFeatures() calls updateSegments().
   
   def darkenButton(self, button):
     button.setStyleSheet("background: #dcdad5; color: #b0b0b0;")
+    self.setButtonState(button, 0)
 
   def greyenButton(self, button):
     button.setStyleSheet("color: #b0b0b0;")
+    self.setButtonState(button, 2)
 
   def lightenButton(self, button):
     button.setStyleSheet("background: #f7f7f4; color: black;")
+    self.setButtonState(button, 1)
+    button.setEnabled(True)
+  
+  def setButtonState(self, button, value):
+    return
+
+    segment = button.text()
+    for i in range(len(Data.CONTOIDS2D)):
+      c = Data.CONTOIDS2D[i]
+      print(i, Data.CONTOIDS2D[i], c)
+      if c[0] == segment:
+        self.buttonStates[0][i] == value
+        print(segment, self.buttonStates)
+        break
+    for i in range(len(Data.VOCOIDS2D)):
+      v = Data.VOCOIDS2D[i]
+      if v[0] == segment:
+        self.buttonStates[1][i] == value
+        print(segment, self.buttonStates)
+        break
+
+  def hideButton(self, button):
+    button.setStyleSheet("background: #dcdad5; color: #dcdad5;")
+    button.setEnabled(False)
 
   def setFeaturesOfSegment(self, segment):
     for i in range(len(Data.FEATURES)):
@@ -404,6 +618,44 @@ class Whiskey(QMainWindow):
     dontQuit.setText("Okay, I won't quit.")
     dontQuit.exec_()
   
+  def newInventory(self):
+    for i in range(len(Data.CONTOIDS2D)):
+      c = Data.CONTOIDS2D[i]
+      print(c[-1], c[-1].isEnabled())
+      if c[-1].isEnabled():
+        self.newInventoryWindow.buttonStates[0][i] = 1
+    for i in range(len(Data.VOCOIDS2D)):
+      v = Data.VOCOIDS2D[i]
+      if v[-1].isEnabled():
+        self.newInventoryWindow.buttonStates[1][i] = 1
+    self.newInventoryWindow.prepare()
+    self.newInventoryWindow.show()
+  
+  def toggleShowActiveLanguage(self):
+    self.isShowingActiveLanguage = not self.isShowingActiveLanguage
+    self.updateSegments()
+
+  def openInventory(self):
+    filename = QFileDialog.getOpenFileName(self, "", "", "Whiskey files (*.wh);; Text files (*.txt);; Other files (*)")[0]
+    self.load(filename)
+
+  def load(self, filename):
+    self.activeLanguage = Inventories.beautify(open(filename))
+    self.showLanguageAction.setChecked(True)
+    self.isShowingActiveLanguage = True
+    self.resetAll()
+    self.updateFeatures()
+    self.statusBar().showMessage("New segment inventory \"%s\" loaded." % filename)
+  
+  def saveInventory(self):
+    dialog = QFileDialog
+    filename = dialog.getSaveFileName(self, "", "", "Whiskey files (*.wh);;")[0]
+    if filename[-3:] != ".wh":
+      print(".wh" == filename[-3:])
+      filename += ".wh"
+
+    Inventories.uglify(open(filename, "w"))
+  
   def aboutWindow(self):
     about = QMessageBox(self)
     about.setWindowTitle("Whiskey: About")
@@ -424,10 +676,6 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with Whiskey.  If not, see <http://www.gnu.org/licenses/>.
-
-다겠않 지하름시 서해대 에움로괴 의몸
-를기이리누 는없 가해 럼그
-행서
 
 Contact me with bugs, errors, questions, or comments at kllwynog@gmail.com.
     """)
@@ -450,3 +698,7 @@ if __name__ == "__main__":
   w.show()
 
   sys.exit(app.exec_())
+
+#다겠않 지하름시 서해대 에움로괴 의몸
+#를기이리누 는없 가해 럼그
+#행서

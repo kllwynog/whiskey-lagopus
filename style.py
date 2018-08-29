@@ -18,6 +18,15 @@ QLabel.segmentName {
   font-size: 16pt;
 }
 
+QPushButton.newInventoryButton {
+  font-size: 20pt;
+  height: 48px;
+  outline: 0;
+  padding: 4px;
+  background: #f7f7f4;
+  border: 2px solid #808080;
+}
+
 QPushButton.resetButton {
   font-size: 20pt;
   height: 48px;
@@ -26,7 +35,7 @@ QPushButton.resetButton {
   border: 2px solid #808080;
 }
 
-QPushButton.resetButton:hover {
+QPushButton.resetButton:hover, QPushButton.newInventoryButton:hover {
   background: #ffff80;
 }
 
@@ -103,5 +112,10 @@ QPushButton.vowel:hover, QPushButton.darkened:hover {
 
 QPushButton.spacer {
   background: #dcdad5;
+}
+
+QPushButton.newinv {
+  background: #dcdad5;
+  color: #b0b0b0;
 }
 """
